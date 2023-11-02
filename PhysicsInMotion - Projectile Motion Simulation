@@ -1,0 +1,114 @@
+import math
+import pygame
+
+pygame.init()
+
+wScreen = 1200
+hScreen = 500
+
+win=pygame.display.set_mode((wScreen,hScreen))
+
+
+class projectile(object):
+    def __init__(self, x, y, radius, color):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.color = color
+
+    def draw(self, win):
+        pygame.draw.circle(win, (0,0,0), (self.x, self.y), self.radius)
+        pygame.draw.circle(win, self.color, (self.x, self.y), self.radius-1)
+
+    @staticmethod
+    def ball_path(startx, starty, power, angle, time): #physics time :)
+        #resolving vector
+        velx = power * math.cos(angle)
+        vely = power * math.sin(angle)
+
+        distX = velx * time # s = ut
+        distY = (vely * time) - (0.5 *5 * (time)**2) # s = ut + 1/2at^2 (but gravity opposes vertical movement so I used minus)
+
+        newx = round(distX + startx)
+        newy = round(starty - distY) #minus because that moves you up in pyton for some reason
+
+        return(newx,newy)
+
+def print_stats(power, angle):
+    font=pygame.font.SysFont("Times New Roman", 12, True, False)
+    P_print=font.render(f"Power: {round(power)}m/s ",True,(255,255,255))
+    win.blit(P_print, (200,200))
+    A_print = font.render(f"Angle: {round(angle*180/math.pi)}",True, (255,255,255))
+    win.blit(A_print, (200,300))
+    xdistance = power * math.cos(angle)
+    range = font.render(f"Range: {round(abs(xdistance))}m",True,(255,255,255))
+    win.blit(range, (200,400))
+
+
+def redrawWindow(power, angle):
+    win.fill((64,64,64))
+    p_object.draw(win)
+    pygame.draw.line(win,(255,255,255),line[0],line[1])
+    print_stats(power, angle)
+    pygame.display.update()
+
+run = True
+p_object= projectile(300,494, 5, (255,255,255))
+
+x=0
+y=0
+time=0
+power=0
+angle=0
+shoot=False
+
+
+def findAngle(pos): #pos is mouse position
+    sX=p_object.x
+    sY= p_object.y
+    try:
+        angle = math.atan((sY - pos[1]) /  (sX - pos[0])) # Y length / X length [Tan(theta) = opp/adj], sub to find mod lengths
+    except:
+        angle=math.pi/2 #arc tan pi/2 is undefined
+
+    #finding what quadrant cursor is in
+    if pos[1]<sY and pos[0]>sX:
+        angle=abs(angle)
+    elif pos[1]<sY and pos[0]<sX:
+        angle=math.pi - angle
+    elif pos[1]>sY and pos[0]<sX:
+        angle= math.pi + abs(angle)
+    elif pos[1]>sY and pos[0]>sX:
+        angle= (math.pi*2) - angle
+
+    return angle
+clock = pygame.time.Clock()
+
+while run:
+    clock.tick(200)
+    if shoot:
+        if p_object.y < 500 - p_object.radius: #set number to height of screen
+            time += 0.05
+            po = p_object.ball_path(x,y,power,angle,time)
+            p_object.x = po[0]
+            p_object.y = po[1]
+        else:
+            shoot = False
+            time=0
+            p_object.y = 494
+    pos=pygame.mouse.get_pos()
+    line=[(p_object.x,p_object.y),pos]
+
+    redrawWindow(power, angle)
+    for event in pygame.event.get():
+        if event.type==pygame.QUIT:
+            run=False
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if shoot == False:
+                shoot = True
+                x = p_object.x
+                y = p_object.y
+                time = 0
+                power = math.sqrt((line[1][1]-line[0][1])**2 +(line[1][0]-line[0][1])**2)/8
+                angle = findAngle(pos)
+pygame.quit()
